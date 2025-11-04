@@ -1,0 +1,87 @@
+# 阶段B血管优化1：针对小目标的改进
+# 基于真实数据集测试的发现
+
+stage: "B"
+
+# SAM2 配置
+sam2:
+  checkpoint: "/home/ubuntu/sam2.1_hiera_large.pt"
+  model_cfg: "configs/sam2.1/sam2.1_hiera_l.yaml"
+  device: "cuda"
+  use_half_precision: true
+
+# 环境配置 - 改进版
+env:
+  max_steps: 20
+  grid_size: 48  # 增加到48（从32）获得更精细控制
+  image_size: [512, 512]
+  max_points: 20
+  observation_type: "flatten"
+
+# 奖励函数配置 - 针对小目标优化
+reward:
+  use_gt: true
+  
+  # 增量奖励（主要信号）
+  delta_iou_weight: 20.0  # 增加权重（从10.0）
+  
+  # 最终奖励
+  final_iou_weight: 10.0  # 增加权重（从5.0）
+  
+  # 惩罚项
+  action_cost: -0.01
+  iou_decrease_penalty: -1.0  # 增加惩罚（从-0.5）
+  
+  # 强制最小步数
+  min_steps: 7  # 增加到7步（从5步）
+  min_steps_bonus: 0.5
+  
+  # 探索奖励
+  exploration_bonus: 0.15  # 增加（从0.1）
+  
+  # Bonus缩放
+  bonus_scale: 0.5  # 增加（从0.3）
+  
+  # 新增：小目标专门奖励
+  small_target_mode: true  # 启用小目标模式
+  mask_size_penalty_threshold: 0.2  # 掩膜>20%时惩罚
+  mask_size_penalty: -0.5  # 过大掩膜惩罚
+  small_mask_bonus_threshold: 0.1  # 掩膜<10%时奖励
+  small_mask_bonus: 0.3  # 小掩膜奖励
+  
+  # 调试模式
+  debug_mode: true  # 启用调试
+
+# PPO训练配置
+ppo:
+  learning_rate: 0.00015  # 略微增加（从0.0001）
+  n_steps: 2048
+  batch_size: 64
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.15  # 略微增加（从0.1）
+  ent_coef: 0.3  # 增加探索（从0.25）
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+
+# 训练配置
+training:
+  total_timesteps: 10000  # 先10000步验证改进
+  save_freq: 5000
+  eval_freq: 5000
+  log_dir: "./logs/stage_b_vessel_opt1"
+  save_dir: "./checkpoints/stage_b_vessel_opt1"
+
+# 数据配置
+data:
+  train_image_dir: "/home/ubuntu/Segment_DATA/orgin_pic"
+  train_mask_dir: "/home/ubuntu/Segment_DATA/lab_pic"
+  val_image_dir: null
+  val_mask_dir: null
+
+# 日志配置
+logging:
+  tensorboard: true
+  verbose: 1
+

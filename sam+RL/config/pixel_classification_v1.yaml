@@ -1,0 +1,63 @@
+# 像素级分类 V1配置
+# 任务重定向：直接进行像素级分类，不使用SAM2
+
+stage: "pixel_classification"
+
+# 环境配置
+env:
+  max_steps: 100  # 最多100步（可分类64个cells）
+  grid_size: 16   # 16x16 grid（共256个cells）
+  image_size: [512, 512]
+
+# 奖励函数配置
+reward:
+  # 性能指标权重
+  iou_weight: 100.0
+  precision_weight: 50.0
+  recall_weight: 50.0
+  
+  # 单步奖励
+  action_cost: -0.1
+  correct_classification_bonus: 1.0
+  wrong_classification_penalty: -0.5
+  
+  # 策略
+  auto_classify_strategy: "none"  # 暂不使用自动分类
+
+# PPO训练配置
+ppo:
+  learning_rate: 0.0003
+  n_steps: 2048
+  batch_size: 64
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.1  # 鼓励探索
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+
+# 训练配置
+training:
+  total_timesteps: 20000
+  save_freq: 10000
+  eval_freq: 10000
+  log_dir: "./logs/pixel_classification_v1"
+  save_dir: "./checkpoints/pixel_classification_v1"
+
+# 数据配置
+data:
+  train_image_dir: "/home/ubuntu/Segment_DATA/orgin_pic"
+  train_mask_dir: "/home/ubuntu/Segment_DATA/lab_pic"
+  val_image_dir: null
+  val_mask_dir: null
+
+# 调试配置
+debug_mode: true
+debug_interval: 10
+
+# 日志配置
+logging:
+  tensorboard: true
+  verbose: 1
+

@@ -1,0 +1,92 @@
+# 阶段B血管优化3：Precision奖励（精确度优先）
+# 放弃暴力惩罚，改用precision作为主要奖励信号
+
+stage: "B"
+
+# SAM2 配置
+sam2:
+  checkpoint: "/home/ubuntu/sam2.1_hiera_large.pt"
+  model_cfg: "configs/sam2.1/sam2.1_hiera_l.yaml"
+  device: "cuda"
+  use_half_precision: true
+
+# 环境配置
+env:
+  max_steps: 20
+  grid_size: 48
+  image_size: [512, 512]
+  max_points: 20
+  observation_type: "flatten"
+
+# 奖励函数配置 - Precision优先
+reward:
+  use_gt: true
+  
+  # 新设计：Precision作为主要奖励
+  use_precision_reward: true  # 启用precision奖励
+  precision_weight: 30.0  # precision奖励权重
+  
+  # IoU仍然重要（但降低权重）
+  delta_iou_weight: 10.0  # 从15降到10
+  final_iou_weight: 8.0   # 从12降到8
+  
+  # 惩罚项
+  action_cost: -0.01
+  iou_decrease_penalty: -0.8
+  
+  # 强制最小步数
+  min_steps: 8
+  min_steps_bonus: 0.4
+  
+  # 探索奖励
+  exploration_bonus: 0.15
+  
+  # Bonus
+  bonus_scale: 0.5
+  
+  # 温和的大小引导（不是主要信号）
+  small_target_mode: true
+  mask_size_penalty_threshold: 0.80  # 只有>80%才惩罚
+  mask_size_penalty: -1.0  # 温和惩罚（从-5.0降回来）
+  small_mask_bonus_threshold: 0.15  # <15%奖励
+  small_mask_bonus: 0.5
+  
+  # 关闭强制负样本（让agent自己学）
+  force_negative_sample: false
+  
+  # 调试模式
+  debug_mode: true
+
+# PPO训练配置
+ppo:
+  learning_rate: 0.00015
+  n_steps: 2048
+  batch_size: 64
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.15
+  ent_coef: 0.3
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+
+# 训练配置
+training:
+  total_timesteps: 12000
+  save_freq: 6000
+  eval_freq: 6000
+  log_dir: "./logs/stage_b_vessel_opt3"
+  save_dir: "./checkpoints/stage_b_vessel_opt3"
+
+# 数据配置
+data:
+  train_image_dir: "/home/ubuntu/Segment_DATA/orgin_pic"
+  train_mask_dir: "/home/ubuntu/Segment_DATA/lab_pic"
+  val_image_dir: null
+  val_mask_dir: null
+
+# 日志配置
+logging:
+  tensorboard: true
+  verbose: 1
+

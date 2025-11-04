@@ -1,0 +1,38 @@
+# 排除所有 checkpoint 文件和目录
+checkpoints/
+checkpoints/**
+
+# Python 缓存文件
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# 虚拟环境（注意：env/ 是项目代码，不应被忽略）
+venv/
+ENV/
+.venv/
+env.bak/
+venv.bak/
+
+# IDE 文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 日志文件
+*.log
+
+# 大文件
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.pdf
+
+# 系统文件
+.DS_Store
+Thumbs.db

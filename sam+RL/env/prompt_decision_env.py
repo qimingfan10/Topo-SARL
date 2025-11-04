@@ -68,8 +68,42 @@ class PromptDecisionEnv(gym.Env):
         self.exploration_bonus = reward_config.get('exploration_bonus', 0.05)
         self.bonus_scale = reward_config.get('bonus_scale', 0.3)  # Bonus缩放系数
         
+        # 新增：小目标专门奖励
+        self.small_target_mode = reward_config.get('small_target_mode', False)
+        self.mask_size_penalty_threshold = reward_config.get('mask_size_penalty_threshold', 0.2)
+        self.mask_size_penalty = reward_config.get('mask_size_penalty', -0.5)
+        self.small_mask_bonus_threshold = reward_config.get('small_mask_bonus_threshold', 0.1)
+        self.small_mask_bonus = reward_config.get('small_mask_bonus', 0.3)
+        
+        # 新增：负样本强制机制
+        self.force_negative_sample = reward_config.get('force_negative_sample', False)
+        self.force_negative_threshold = reward_config.get('force_negative_threshold', 0.3)
+        self.force_negative_prob = reward_config.get('force_negative_prob', 0.7)
+        
+        # 新增：Precision奖励
+        self.use_precision_reward = reward_config.get('use_precision_reward', False)
+        self.precision_weight = reward_config.get('precision_weight', 30.0)
+        
+        # 新增：IoU里程碑奖励
+        self.use_iou_milestones = reward_config.get('use_iou_milestones', False)
+        self.iou_milestone_thresholds = [0.05, 0.06, 0.08, 0.10]
+        self.iou_milestone_rewards = [
+            reward_config.get('iou_milestone_0.05', 5.0),
+            reward_config.get('iou_milestone_0.06', 8.0),
+            reward_config.get('iou_milestone_0.08', 15.0),
+            reward_config.get('iou_milestone_0.10', 25.0),
+        ]
+        
         # 调试模式
         self.debug_mode = reward_config.get('debug_mode', False)
+        
+        # 调试统计
+        self.debug_stats = {
+            'mask_sizes': [],
+            'ious': [],
+            'delta_ious': [],
+            'rewards': []
+        }
         
         # 网格配置
         self.grid_cell_size = self.image_size[0] // self.grid_size  # 16像素/格
@@ -194,9 +228,30 @@ class PromptDecisionEnv(gym.Env):
         
         # 执行动作
         if action_type == 2:  # Terminate
+            # 强制最小步数：前min_steps步禁止terminate
+            if self.step_count < self.min_steps:
+                # 将terminate动作转换为positive动作（在图像中心添加点）
+                action_type = 0  # 改为positive
+                grid_x = self.grid_size // 2
+                grid_y = self.grid_size // 2
+                info['forced_continue'] = True
+                info['action_detail'] = f'terminate_blocked_at_step_{self.step_count}_converted_to_positive'
+            else:
             terminated = True
             info['action_detail'] = 'terminate'
-        else:
+        
+        if action_type != 2:  # 如果不是terminate（包括被强制转换的）
+            # 负样本强制机制：如果掩膜过大，强制转换为negative
+            if self.force_negative_sample and action_type == 0:  # 只针对positive动作
+                current_mask_coverage = self.current_mask.sum() / self.current_mask.size
+                if current_mask_coverage > self.force_negative_threshold:
+                    # 以一定概率强制转换为negative
+                    if np.random.random() < self.force_negative_prob:
+                        action_type = 1  # 强制改为negative
+                        info['forced_negative'] = True
+                        if self.debug_mode:
+                            print(f"  [FORCE NEG] 掩膜过大 {current_mask_coverage*100:.1f}% > {self.force_negative_threshold*100:.0f}%, 强制转换为negative")
+            
             # 转换网格坐标到像素坐标（网格中心）
             pixel_x = grid_x * self.grid_cell_size + self.grid_cell_size // 2
             pixel_y = grid_y * self.grid_cell_size + self.grid_cell_size // 2
@@ -292,7 +347,7 @@ class PromptDecisionEnv(gym.Env):
     
     def _compute_reward(self, action_type: int) -> float:
         """
-        计算奖励（优化版本）
+        计算奖励（优化版本 + Precision支持）
         
         Args:
             action_type: 动作类型
@@ -303,44 +358,94 @@ class PromptDecisionEnv(gym.Env):
         reward = 0.0
         delta_iou = self.current_iou - self.prev_iou
         
-        # 1. 增量IoU奖励（主要奖励信号）
+        # 计算precision（精确度）
+        mask_coverage = self.current_mask.sum() / self.current_mask.size
+        precision = self.current_iou / (mask_coverage + 1e-8) if mask_coverage > 0 else 0
+        
+        # 1. Precision奖励（新的主要信号）
+        if self.use_precision_reward:
+            reward += precision * self.precision_weight
+            if self.debug_mode and (self.step_count % 3 == 0 or action_type == 2):
+                print(f"  [PRECISION] IoU={self.current_iou:.4f}, Mask={mask_coverage*100:.1f}%, Precision={precision:.4f}, R_prec={precision*self.precision_weight:+.2f}")
+        
+        # 2. 增量IoU奖励（仍然重要但权重降低）
         reward += delta_iou * self.delta_iou_weight
         
-        # 2. 动作成本
+        # 3. 动作成本
         reward += self.action_cost
         
-        # 3. IoU下降惩罚
+        # 4. IoU下降惩罚
         if delta_iou < -0.01:
             reward += self.iou_decrease_penalty
         
-        # 4. 最小步数奖励（鼓励探索）
+        # 5. 小目标专门奖励（温和版）
+        if self.small_target_mode:
+            # 过大掩膜惩罚（温和）
+            if mask_coverage > self.mask_size_penalty_threshold:
+                penalty = self.mask_size_penalty * (mask_coverage - self.mask_size_penalty_threshold)
+                reward += penalty
+                if self.debug_mode and (self.step_count % 3 == 0 or action_type == 2):
+                    print(f"  [SIZE] 掩膜过大 {mask_coverage*100:.1f}%, 惩罚 {penalty:.3f}")
+            
+            # 小掩膜奖励
+            if mask_coverage < self.small_mask_bonus_threshold and self.current_iou > 0.01:
+                bonus = self.small_mask_bonus
+                reward += bonus
+                if self.debug_mode and (self.step_count % 3 == 0 or action_type == 2):
+                    print(f"  [SIZE] 小掩膜 {mask_coverage*100:.1f}%, 奖励 {bonus:.3f}")
+        
+        # 6. 最小步数奖励（鼓励探索）
         if self.step_count >= self.min_steps:
             reward += self.min_steps_bonus
         
-        # 5. 探索奖励（超过最小步数后的额外奖励）
+        # 7. 探索奖励（超过最小步数后的额外奖励）
         if self.step_count > self.min_steps:
             reward += self.exploration_bonus
         
-        # 6. 最终奖励（terminate时）
+        # 8. IoU里程碑奖励（新增）
+        if self.use_iou_milestones:
+            for threshold, milestone_reward in zip(self.iou_milestone_thresholds, self.iou_milestone_rewards):
+                if self.current_iou >= threshold:
+                    reward += milestone_reward
+                    if self.debug_mode and (self.step_count % 3 == 0 or action_type == 2):
+                        print(f"  [MILESTONE] IoU≥{threshold*100:.0f}%, 奖励 +{milestone_reward:.1f}")
+                    break  # 只奖励最高达到的里程碑
+        
+        # 9. 最终奖励（terminate时）
         if action_type == 2:
             reward += self.current_iou * self.final_iou_weight
             
-            # 优化的Bonus（减小权重）
+            # Precision bonus
+            if self.use_precision_reward and precision > 0.2:
+                reward += precision * self.precision_weight * 0.5
+                if self.debug_mode:
+                    print(f"  [FINAL] 高precision终止奖励: {precision*self.precision_weight*0.5:+.2f}")
+            
+            # 优化的Bonus
             if self.current_iou > 0.5:
-                reward += 0.5 * self.bonus_scale  # 从2.0减到0.15
+                reward += 0.5 * self.bonus_scale
             elif self.current_iou > 0.3:
-                reward += 0.3 * self.bonus_scale  # 从1.0减到0.09
+                reward += 0.3 * self.bonus_scale
             elif self.current_iou > 0.1:
-                reward += 0.1 * self.bonus_scale  # 从0.5减到0.03
+                reward += 0.1 * self.bonus_scale
             
             # 过早终止惩罚
             if self.step_count < self.min_steps:
-                reward -= 0.5  # 惩罚过早终止
+                reward -= 0.5
         
-        # 调试信息
-        if self.debug_mode and self.step_count % 5 == 0:
-            print(f"  [DEBUG] Step={self.step_count}, IoU={self.current_iou:.4f}, "
-                  f"delta_IoU={delta_iou:.4f}, reward={reward:.4f}")
+        # 调试统计
+        if self.small_target_mode or self.use_precision_reward:
+            self.debug_stats['mask_sizes'].append(mask_coverage)
+            self.debug_stats['ious'].append(self.current_iou)
+            self.debug_stats['delta_ious'].append(delta_iou)
+            self.debug_stats['rewards'].append(reward)
+        
+        # 调试信息（简化版）
+        if self.debug_mode and (self.step_count % 3 == 0 or action_type == 2):
+            if self.use_precision_reward:
+                print(f"  [REWARD] Step={self.step_count}, P={precision:.3f}, IoU={self.current_iou:.4f}, R_total={reward:+.2f}")
+            else:
+                print(f"  [REWARD] Step={self.step_count}, IoU={self.current_iou:.4f}, Mask={mask_coverage*100:.1f}%, R={reward:+.2f}")
         
         return reward
     

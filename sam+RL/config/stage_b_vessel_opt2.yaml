@@ -1,0 +1,92 @@
+# 阶段B血管优化2：暴力惩罚 + 负样本强制
+# 基于opt1的失败教训
+
+stage: "B"
+
+# SAM2 配置
+sam2:
+  checkpoint: "/home/ubuntu/sam2.1_hiera_large.pt"
+  model_cfg: "configs/sam2.1/sam2.1_hiera_l.yaml"
+  device: "cuda"
+  use_half_precision: true
+
+# 环境配置
+env:
+  max_steps: 25  # 增加到25（从20）
+  grid_size: 48
+  image_size: [512, 512]
+  max_points: 25  # 增加到25
+  observation_type: "flatten"
+
+# 奖励函数配置 - 激进版
+reward:
+  use_gt: true
+  
+  # 增量奖励（降低权重减少方差）
+  delta_iou_weight: 15.0  # 从20降到15
+  
+  # 最终奖励
+  final_iou_weight: 12.0  # 增加到12
+  
+  # 惩罚项
+  action_cost: -0.01
+  iou_decrease_penalty: -1.5  # 增加（从-1.0）
+  
+  # 强制最小步数
+  min_steps: 10  # 增加到10步（从7步）
+  min_steps_bonus: 0.6  # 增加
+  
+  # 探索奖励
+  exploration_bonus: 0.2  # 增加
+  
+  # Bonus缩放
+  bonus_scale: 0.6
+  
+  # 小目标专门奖励 - 激进版
+  small_target_mode: true
+  mask_size_penalty_threshold: 0.15  # 降低到15%（从20%）
+  mask_size_penalty: -5.0  # 暴力惩罚！从-0.5增加到-5.0
+  small_mask_bonus_threshold: 0.10
+  small_mask_bonus: 0.5  # 增加奖励（从0.3）
+  
+  # 新增：负样本强制机制
+  force_negative_sample: true  # 启用负样本强制
+  force_negative_threshold: 0.30  # 掩膜>30%时触发
+  force_negative_prob: 0.7  # 70%概率强制添加负样本
+  
+  # 调试模式
+  debug_mode: true
+
+# PPO训练配置
+ppo:
+  learning_rate: 0.00012  # 略微降低
+  n_steps: 2048
+  batch_size: 64
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.12  # 略微降低
+  ent_coef: 0.35  # 增加探索（从0.3）
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+
+# 训练配置
+training:
+  total_timesteps: 12000  # 12000步
+  save_freq: 6000
+  eval_freq: 6000
+  log_dir: "./logs/stage_b_vessel_opt2"
+  save_dir: "./checkpoints/stage_b_vessel_opt2"
+
+# 数据配置
+data:
+  train_image_dir: "/home/ubuntu/Segment_DATA/orgin_pic"
+  train_mask_dir: "/home/ubuntu/Segment_DATA/lab_pic"
+  val_image_dir: null
+  val_mask_dir: null
+
+# 日志配置
+logging:
+  tensorboard: true
+  verbose: 1
+

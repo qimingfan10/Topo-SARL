@@ -1,0 +1,97 @@
+# 阶段B血管优化5：平衡Precision+IoU + 里程碑奖励
+# 最后一次奖励函数优化尝试
+
+stage: "B"
+
+# SAM2 配置
+sam2:
+  checkpoint: "/home/ubuntu/sam2.1_hiera_large.pt"
+  model_cfg: "configs/sam2.1/sam2.1_hiera_l.yaml"
+  device: "cuda"
+  use_half_precision: true
+
+# 环境配置
+env:
+  max_steps: 20
+  grid_size: 48
+  image_size: [512, 512]
+  max_points: 20
+  observation_type: "flatten"
+
+# 奖励函数配置 - 平衡版
+reward:
+  use_gt: true
+  
+  # Precision和IoU平衡
+  use_precision_reward: true
+  precision_weight: 50.0  # 平衡点（opt3:30, opt4:100）
+  delta_iou_weight: 10.0  # 恢复重要性（opt3:10, opt4:5）
+  final_iou_weight: 15.0  # 增强终止时IoU奖励
+  
+  # IoU里程碑奖励（新增）
+  use_iou_milestones: true
+  iou_milestone_0.05: 5.0   # IoU≥5%时额外+5
+  iou_milestone_0.06: 8.0   # IoU≥6%时额外+8
+  iou_milestone_0.08: 15.0  # IoU≥8%时额外+15
+  iou_milestone_0.10: 25.0  # IoU≥10%时额外+25
+  
+  # 惩罚项
+  action_cost: -0.01
+  iou_decrease_penalty: -0.8
+  
+  # 强制最小步数
+  min_steps: 10
+  min_steps_bonus: 0.5
+  
+  # 探索奖励
+  exploration_bonus: 0.2
+  
+  # Bonus
+  bonus_scale: 0.6
+  
+  # 温和的大小引导
+  small_target_mode: true
+  mask_size_penalty_threshold: 0.80
+  mask_size_penalty: -1.0
+  small_mask_bonus_threshold: 0.15
+  small_mask_bonus: 0.6
+  
+  # 关闭强制负样本
+  force_negative_sample: false
+  
+  # 调试模式
+  debug_mode: true
+
+# PPO训练配置
+ppo:
+  learning_rate: 0.00018
+  n_steps: 2048
+  batch_size: 64
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.15
+  ent_coef: 0.35
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+
+# 训练配置
+training:
+  total_timesteps: 18000  # 更长训练
+  save_freq: 9000
+  eval_freq: 9000
+  log_dir: "./logs/stage_b_vessel_opt5"
+  save_dir: "./checkpoints/stage_b_vessel_opt5"
+
+# 数据配置
+data:
+  train_image_dir: "/home/ubuntu/Segment_DATA/orgin_pic"
+  train_mask_dir: "/home/ubuntu/Segment_DATA/lab_pic"
+  val_image_dir: null
+  val_mask_dir: null
+
+# 日志配置
+logging:
+  tensorboard: true
+  verbose: 1
+
