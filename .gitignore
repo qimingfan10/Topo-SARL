@@ -3,18 +3,22 @@
 !README.md
 !sam+RL/README.md
 !RL4Seg3D/README.md
+!sam2/README.md
 
 # 忽略所有 log 文件
 *.log
 sam+RL/logs/
 sam+RL/**/*.log
 RL4Seg3D/**/*.log
+sam2/**/*.log
 
 # 忽略 checkpoints 大型文件
 sam+RL/checkpoints/
 sam+RL/checkpoints/**
 RL4Seg3D/**/checkpoints/
 RL4Seg3D/**/checkpoints/**
+sam2/checkpoints/
+sam2/checkpoints/**
 
 # Python 缓存文件
 __pycache__/
@@ -25,6 +29,7 @@ __pycache__/
 sam+RL/__pycache__/
 sam+RL/**/__pycache__/
 RL4Seg3D/**/__pycache__/
+sam2/**/__pycache__/
 
 # 虚拟环境
 venv/
