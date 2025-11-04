@@ -45,12 +45,15 @@ venv.bak/
 *.swo
 *~
 
-# 大图片文件
+# 大图片文件和视频文件
 *.png
 *.jpg
 *.jpeg
 *.gif
 *.pdf
+sam2/notebooks/videos/
+sam2/notebooks/**/*.mp4
+sam2/notebooks/**/*.video
 
 # 系统文件
 .DS_Store
