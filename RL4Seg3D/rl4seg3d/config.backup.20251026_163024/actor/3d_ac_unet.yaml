@@ -1,0 +1,12 @@
+defaults:
+  - default_actor
+  - override actor: categorical_3d_unet_actor
+  - override critic: 3d_unet_critic
+  - _self_
+
+_target_: rl4seg3d.actors.ActorCritic_Unet.ActorCriticUnetCritic
+
+# 改进版学习率：在稳定性和收敛速度之间平衡
+# 从极保守的0.00005提升到0.0002，应该能更快收敛
+actor_lr: 0.0002      # 提升4倍（从0.00005），仍比默认0.01小50倍
+critic_lr: 0.0003     # 提升3倍（从0.0001），仍比默认0.005小16倍

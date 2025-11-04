@@ -1,0 +1,16 @@
+defaults:
+  - /model/net@net: unet
+
+_target_: rl4seg3d.reward.reward_nets_3d.RewardUnets3D
+
+state_dict_paths:
+  anatomical: null #<PATH_TO_ANATOMICAL>
+  landmarks: null #<PATH_TO_LM>
+
+temp_factor: 1 #4.5989 optimal factor for LM+ANAT calibration
+
+# 类别不平衡处理：给前景更高的权重
+# 前景占比约4.59%，背景占比约95.41%，比例约1:21
+pos_weight: 20.0  # 前景样本权重（针对极度不平衡）
+
+# net参数已在/model/net/unet.yaml中定义

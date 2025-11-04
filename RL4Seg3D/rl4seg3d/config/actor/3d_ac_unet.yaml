@@ -1,0 +1,12 @@
+defaults:
+  - default_actor
+  - override actor: categorical_3d_unet_actor
+  - override critic: 3d_unet_critic
+  - _self_
+
+_target_: rl4seg3d.actors.ActorCritic_Unet.ActorCriticUnetCritic
+
+# 🚀 改进版学习率：提高学习率以突破性能瓶颈
+# 从保守的0.0005提升到0.001，帮助跳出局部最优
+actor_lr: 0.001       # 🚀 改进：2倍提升，增强策略更新能力
+critic_lr: 0.0015     # 🚀 改进：2倍提升，提高价值估计精度

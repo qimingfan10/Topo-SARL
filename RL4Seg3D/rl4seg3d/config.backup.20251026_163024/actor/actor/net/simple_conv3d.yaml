@@ -1,0 +1,32 @@
+_target_: torch.nn.Sequential
+
+# 简单的卷积网络，避免UNet的skip connection问题
+_args_:
+  - _target_: torch.nn.Conv3d
+    in_channels: 4
+    out_channels: 32
+    kernel_size: [3, 3, 3]
+    padding: [1, 1, 1]
+  
+  - _target_: torch.nn.InstanceNorm3d
+    num_features: 32
+  
+  - _target_: torch.nn.LeakyReLU
+    negative_slope: 0.01
+  
+  - _target_: torch.nn.Conv3d
+    in_channels: 32
+    out_channels: 64
+    kernel_size: [3, 3, 3]
+    padding: [1, 1, 1]
+  
+  - _target_: torch.nn.InstanceNorm3d
+    num_features: 64
+  
+  - _target_: torch.nn.LeakyReLU
+    negative_slope: 0.01
+  
+  - _target_: torch.nn.Conv3d
+    in_channels: 64
+    out_channels: 3
+    kernel_size: [1, 1, 1]

@@ -1,0 +1,36 @@
+work_dir: ${hydra:runtime.cwd}
+run_name: supervised_default
+
+logger_run_name: '${get_class_name: ${model._target_}}_${run_name}'
+
+defaults:
+  - logger: tensorboard
+  - model: supervised_3d
+  - datamodule: cardinal_3d
+  - callbacks: default
+  - _self_
+  - experiment: ppo_icardio_3d
+
+seed: 1
+model:
+  seed: ${seed}
+
+callbacks:
+  model_checkpoint:
+    monitor: val_dice
+
+predict_subset_frac: 0
+
+datamodule:
+  supervised: True
+
+train: True
+
+trainer:
+  _target_: lightning.pytorch.Trainer
+  max_epochs: 50
+  log_every_n_steps: 1
+  accelerator: gpu
+  devices: 1
+  precision: bf16-mixed
+  #num_sanity_val_steps: 0 # skip sanity check (convenient for debugging directly in train step)

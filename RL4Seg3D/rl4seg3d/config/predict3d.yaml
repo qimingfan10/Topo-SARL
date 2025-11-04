@@ -1,0 +1,69 @@
+# @package _global_
+
+defaults:
+  - model: ppo_3d
+  - paths: default
+  - extras: default
+  - override hydra/job_logging: custom
+  - _self_
+
+task_name: "predict"
+
+tags: ["predict"]
+
+# input folder containing data for inference
+input_path: ???
+
+# output folder to save predictions
+output_path: ???
+
+# passing checkpoint path is necessary for prediction
+ckpt_path: ./data/checkpoints/rl4seg3d_slim.ckpt
+
+# whether to use test time augmentation
+tta: True
+
+# whether to use test time optimization scheme: 'force' (always), 'on' (anatomical or temporal metrics fail) or 'off'
+# any other value will be considered 'off'
+tto: 'on'
+
+# whether to overwrite existing predictions in the output folder
+overwrite_existing: True
+
+common_spacing: [0.37, 0.37, 1]
+
+apply_eq_hist: True
+
+pin_memory: True
+
+num_workers: 12
+
+hydra:
+  output_subdir: null
+  run:
+    dir: .
+  job_logging:
+    disable_existing_loggers: true  # disables logging to hydra.log
+  hydra_logging:
+    disable_existing_loggers: true  # disables logging to hydra.log
+
+model:
+  tta: ${tta}
+  tto: ${tto}
+  # best parameters for TTO
+  actor:
+    actor_lr: 0.01
+  divergence_coeff: 0.01
+  entropy_coeff: 0.1
+  inference: True
+  predict_save_dir: ${output_path}  # 保存预测结果的目录
+
+trainer:
+  _target_: lightning.pytorch.Trainer
+  inference_mode: False # MUST for TTO
+  max_epochs: 1
+  log_every_n_steps: 1
+  accelerator: gpu
+  devices: 1
+  logger: False
+

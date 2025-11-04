@@ -1,0 +1,23 @@
+_target_: rl4seg3d.datamodules.RL_3d_datamodule.RL3dDataModule
+data_dir: /home/ubuntu/my_organized_dataset/
+num_workers: 0
+pin_memory: False
+batch_size: 1 # must be 1
+dataset_name: ""
+csv_file: my_organized_dataset.csv
+splits_column: my_split # column for train-test-val split, will be created if doesn't yet exist
+gt_column: null
+seed: ${seed}
+
+max_image_area: null
+common_spacing: [1.0, 1.0, 2.0]
+max_window_len: 20     # 增加到20帧以匹配原始视频长度
+max_batch_size: 1
+max_tensor_volume: 1000000  # 增加到1M以容纳更多帧（800×800×20=12.8M像素）
+shape_divisible_by: [32, 32, 4]
+
+approx_gt_dir: ${logger.save_dir}
+supervised: false
+
+# 数据增强配置
+use_augmentation: True  # 启用数据增强（仅训练集）

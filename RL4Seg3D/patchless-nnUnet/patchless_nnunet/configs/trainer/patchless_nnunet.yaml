@@ -1,0 +1,10 @@
+defaults:
+  - gpu
+
+max_epochs: 50
+
+# gradient clipping
+gradient_clip_val: 12
+
+# mixed precision for extra speed-up
+precision: 16-mixed

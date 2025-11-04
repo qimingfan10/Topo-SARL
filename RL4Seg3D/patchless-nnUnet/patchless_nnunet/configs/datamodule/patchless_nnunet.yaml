@@ -1,0 +1,12 @@
+_target_: patchless_nnunet.datamodules.patchless_nnunet_datamodule.PatchlessnnUnetDataModule
+data_dir: ${paths.data_dir}
+num_workers: 12
+pin_memory: True
+batch_size: 1
+dataset_name: icardio_subset
+csv_file_name: subset.csv
+common_spacing: [0.37, 0.37, 1]
+max_window_len: 4
+max_batch_size: 4
+max_tensor_volume: 5000000
+shape_divisible_by: [32, 32, 4]

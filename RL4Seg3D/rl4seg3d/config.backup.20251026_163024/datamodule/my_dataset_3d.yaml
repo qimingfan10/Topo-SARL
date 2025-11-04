@@ -1,0 +1,31 @@
+# 文件路径: /home/ubuntu/RL4Seg3D/rl4seg3d/config/datamodule/my_dataset_3d.yaml
+
+# 继承基础配置 (如果需要可以从 icardio_3d.yaml 或 cardinal_3d.yaml 复制更多设置)
+_target_: rl4seg3d.datamodules.RL_3d_datamodule.RL3dDataModule 
+
+# 指向您的数据集目录 (使用环境变量)
+data_dir: ${oc.env:DATA_PATH}/my_organized_dataset/ 
+
+# 您生成的 CSV 文件名
+csv_file: my_organized_dataset.csv 
+
+# 您在 organize_dataset.py 脚本中使用的 split 列名
+splits_column: my_split 
+gt_column: null # <--- 添加这一行
+# --- 其他常用设置 (可以从 icardio_3d.yaml 复制) ---
+num_workers: 12        # 根据您的 CPU 核心数调整
+pin_memory: True
+batch_size: 1          # RL 训练通常 batch_size 为 1
+seed: ${seed}           # 使用全局 seed
+
+# 空间重采样设置 (保持默认或根据您的数据调整)
+common_spacing: [0.37, 0.37, 1] 
+
+# 时间窗口和显存控制 (重要!)
+max_window_len: 4      # 每次送入模型的帧数
+max_batch_size: 1      # 在一个样本内创建多少个时间窗口批次 (保持 1 较安全)
+max_tensor_volume: 5000000 # 限制单个样本的最大体素数量以防 OOM
+shape_divisible_by: [32, 32, 4] # U-Net 输入尺寸要求
+
+# 指向自动生成的奖励数据集的位置 (使用环境变量)
+approx_gt_dir: oc.env:LOGPATH/{oc.env:LOG_PATH}/oc.env:LOGP​ATH/{run_name}/ # ${run_name} 会被 Hydra 自动替换

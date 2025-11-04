@@ -1,0 +1,19 @@
+defaults:
+  - /model/net@net: unet
+
+_target_: rl4seg3d.reward.reward_nets_3d.RewardUnets3D
+
+state_dict_paths:
+  anatomical: null #<PATH_TO_ANATOMICAL>
+  landmarks: null #<PATH_TO_LM>
+
+temp_factor: 1 #4.5989 optimal factor for LM+ANAT calibration
+
+# 🔧 v267修复：完全禁用pos_weight
+# 原因：pos_weight导致reward hacking（模型学到"全屏预测=最高reward"）
+# v265: pos_weight=20.0 → 100%全屏
+# v266: pos_weight=2.0 → 仍然100%全屏
+# v267: pos_weight=1.0 → 禁用加权，避免reward hacking
+pos_weight: 1.0  # 完全禁用前景加权（1.0 = 无加权）
+
+# net参数已在/model/net/unet.yaml中定义

@@ -1,0 +1,52 @@
+# 忽略所有 md 文件（除了 README.md）
+*.md
+!README.md
+!sam+RL/README.md
+!RL4Seg3D/README.md
+
+# 忽略所有 log 文件
+*.log
+sam+RL/logs/
+sam+RL/**/*.log
+RL4Seg3D/**/*.log
+
+# 忽略 checkpoints 大型文件
+sam+RL/checkpoints/
+sam+RL/checkpoints/**
+RL4Seg3D/**/checkpoints/
+RL4Seg3D/**/checkpoints/**
+
+# Python 缓存文件
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+sam+RL/__pycache__/
+sam+RL/**/__pycache__/
+RL4Seg3D/**/__pycache__/
+
+# 虚拟环境
+venv/
+ENV/
+.venv/
+env.bak/
+venv.bak/
+
+# IDE 文件
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 大图片文件
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.pdf
+
+# 系统文件
+.DS_Store
+Thumbs.db

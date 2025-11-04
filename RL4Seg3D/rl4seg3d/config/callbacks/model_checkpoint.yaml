@@ -1,0 +1,9 @@
+model_checkpoint:
+  _target_: lightning.pytorch.callbacks.ModelCheckpoint
+
+  monitor: val/reward
+  mode: max
+  save_last: True
+  save_top_k: 1
+  filename: 'best-{epoch:02d}-{val/reward:.4f}'
+  auto_insert_metric_name: False
