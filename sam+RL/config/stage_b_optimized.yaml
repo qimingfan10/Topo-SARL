@@ -1,0 +1,80 @@
+# 阶段B优化配置：修复奖励函数问题
+# 基于中期测试分析的改进版本
+
+stage: "B"
+
+# SAM2 配置
+sam2:
+  checkpoint: "/home/ubuntu/sam2.1_hiera_large.pt"
+  model_cfg: "configs/sam2.1/sam2.1_hiera_l.yaml"
+  device: "cuda"
+  use_half_precision: true
+
+# 环境配置
+env:
+  max_steps: 20
+  grid_size: 32
+  image_size: [512, 512]
+  max_points: 20
+  observation_type: "flatten"
+
+# 奖励函数配置 - 优化版本
+reward:
+  use_gt: true
+  
+  # 增量奖励（保持）
+  delta_iou_weight: 10.0
+  
+  # 最终奖励（保持）
+  final_iou_weight: 5.0
+  
+  # 惩罚项（保持）
+  action_cost: -0.01
+  iou_decrease_penalty: -0.5
+  
+  # 新增：最小步数奖励（鼓励探索）
+  min_steps: 5  # 至少探索5步
+  min_steps_bonus: 0.2  # 达到最小步数的奖励
+  
+  # 新增：探索奖励
+  exploration_bonus: 0.05  # 每多探索一步的小奖励（step > min_steps时）
+  
+  # 新增：Bonus缩放（大幅减小bonus权重）
+  bonus_scale: 0.3  # 将原来的bonus缩小到30%
+  
+  # 调试模式
+  debug_mode: false  # 设为true可看到详细调试信息
+
+# PPO训练配置 - 优化版本
+ppo:
+  learning_rate: 0.0001  # 减小（从0.0003）提高稳定性
+  n_steps: 2048
+  batch_size: 64
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.1  # 减小（从0.2）防止策略剧烈变化
+  ent_coef: 0.2  # 增大（从0.1）鼓励更多探索
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+
+# 训练配置
+training:
+  total_timesteps: 50000
+  save_freq: 10000
+  eval_freq: 5000
+  log_dir: "./logs/stage_b_optimized"
+  save_dir: "./checkpoints/stage_b_optimized"
+
+# 数据配置
+data:
+  train_image_dir: "/home/ubuntu/Segment_DATA/orgin_pic"
+  train_mask_dir: "/home/ubuntu/Segment_DATA/lab_pic"
+  val_image_dir: null
+  val_mask_dir: null
+
+# 日志配置
+logging:
+  tensorboard: true
+  verbose: 1
+

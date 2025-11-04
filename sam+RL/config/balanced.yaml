@@ -1,0 +1,76 @@
+# SAM2 配置
+sam2:
+  checkpoint: "/home/ubuntu/sam2.1_hiera_large.pt"
+  model_cfg: "configs/sam2.1/sam2.1_hiera_l.yaml"
+  device: "cuda"
+  use_half_precision: true
+
+# 候选生成配置
+candidates:
+  num_initial_points: 4  # 平衡：不太多也不太少
+  num_candidates_per_point: 3
+  mask_thresholds: [0.3, 0.6, 0.9]  # 混合策略
+  multimask_output: true
+  
+# RL 环境配置
+env:
+  max_steps: 12
+  image_size: [512, 512]
+  observation_features: 128
+  
+# RL 动作空间
+actions:
+  select_candidate: true
+  sample_new_prompt: true
+  merge_current: true
+  terminate: true
+
+# 奖励函数配置 - 平衡版
+reward:
+  # 有标注数据
+  use_gt: true
+  iou_weight: 3.0  # 适度增加（基线2.0 → 3.0）
+  cldice_weight: 0.8  # 适度增加（基线0.5 → 0.8）
+  topology_weight: 0.15
+  
+  # 辅助奖励
+  vesselness_weight: 0.5
+  smoothness_weight: 0.1
+  
+  # 成本项 - 关键平衡！
+  action_cost: -0.003  # 轻微增加
+  false_positive_penalty: -1.0  # 适度惩罚（不要太重！）
+
+# PPO 训练配置
+ppo:
+  learning_rate: 0.0003
+  n_steps: 2048
+  batch_size: 96  # 折中
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.03  # 折中
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  
+# 训练配置
+training:
+  total_timesteps: 100000
+  save_freq: 10000
+  eval_freq: 5000
+  log_dir: "./logs/balanced"
+  save_dir: "./checkpoints/balanced"
+  
+# 数据配置
+data:
+  train_image_dir: "/home/ubuntu/Segment_DATA/orgin_pic"
+  train_mask_dir: "/home/ubuntu/Segment_DATA/lab_pic"
+  val_image_dir: null
+  val_mask_dir: null
+  
+# 日志配置
+logging:
+  tensorboard: true
+  verbose: 1
+

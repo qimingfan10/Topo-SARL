@@ -1,0 +1,68 @@
+# 阶段B配置：Prompt Decision Maker
+# RL学习生成精确的SAM2提示点
+
+# 标识阶段
+stage: "B"
+
+# SAM2 配置
+sam2:
+  checkpoint: "/home/ubuntu/sam2.1_hiera_large.pt"
+  model_cfg: "configs/sam2.1/sam2.1_hiera_l.yaml"
+  device: "cuda"
+  use_half_precision: true
+
+# 环境配置
+env:
+  max_steps: 20  # 最多20个提示点
+  grid_size: 32  # 32×32网格
+  image_size: [512, 512]
+  max_points: 20  # 最多保留20个点
+  observation_type: "flatten"  # flatten或cnn
+
+# 奖励函数配置
+reward:
+  use_gt: true  # 使用ground truth计算IoU
+  
+  # 增量奖励（核心）
+  delta_iou_weight: 10.0  # IoU提升的奖励权重
+  
+  # 最终奖励
+  final_iou_weight: 5.0  # 终止时的额外奖励
+  
+  # 惩罚项
+  action_cost: -0.01  # 每步小惩罚，鼓励快速完成
+  iou_decrease_penalty: -0.5  # IoU下降的额外惩罚
+
+# PPO训练配置
+ppo:
+  learning_rate: 0.0003
+  n_steps: 2048  # 每次更新收集的步数
+  batch_size: 64
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.1  # 提高探索，避免早终止
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+
+# 训练配置
+training:
+  total_timesteps: 50000  # 初期测试用50000步
+  save_freq: 10000
+  eval_freq: 5000
+  log_dir: "./logs/stage_b"
+  save_dir: "./checkpoints/stage_b"
+
+# 数据配置
+data:
+  train_image_dir: "/home/ubuntu/Segment_DATA/orgin_pic"
+  train_mask_dir: "/home/ubuntu/Segment_DATA/lab_pic"
+  val_image_dir: null
+  val_mask_dir: null
+
+# 日志配置
+logging:
+  tensorboard: true
+  verbose: 1
+

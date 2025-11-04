@@ -1,0 +1,78 @@
+# SAM2 配置
+sam2:
+  checkpoint: "/home/ubuntu/sam2.1_hiera_large.pt"
+  model_cfg: "configs/sam2.1/sam2.1_hiera_l.yaml"
+  device: "cuda"
+  use_half_precision: true  # bfloat16
+
+# 候选生成配置
+candidates:
+  # 生成多个候选的方式：通过不同的提示采样
+  num_initial_points: 5  # 初始随机采样的正点数量
+  num_candidates_per_point: 3  # 每个点生成的候选数（不同mask_threshold）
+  mask_thresholds: [0.0, 0.5, 1.0]  # SAM2 输出的掩膜二值化阈值
+  multimask_output: true  # SAM2 是否输出多个候选
+  
+# RL 环境配置
+env:
+  max_steps: 15  # 每个 episode 最多选择/采样动作的次数 - 增加探索
+  image_size: [512, 512]  # 输入图像尺寸
+  observation_features: 128  # 观察特征维度
+  
+# RL 动作空间
+actions:
+  # 离散动作：选择候选ID（0~N-1）、继续采样新提示、融合当前、终止
+  select_candidate: true  # 选择某个候选
+  sample_new_prompt: true  # 在不确定区域采样新提示点
+  merge_current: true  # 融合当前选中的候选
+  terminate: true  # 终止并输出
+
+# 奖励函数配置
+reward:
+  # 有标注数据
+  use_gt: true  # 改为有监督模式（现在有220个标注）
+  iou_weight: 2.0
+  cldice_weight: 0.5  # 中心线 Dice
+  topology_weight: 0.1  # 拓扑保持（连通组件数惩罚）- 减小惩罚
+  
+  # 无标注数据（辅助奖励）
+  vesselness_weight: 1.0  # 血管度权重（现在有原始图像可以计算）
+  smoothness_weight: 0.2  # 边界平滑度
+  
+  # 成本项
+  action_cost: -0.002  # 每个动作的小惩罚 - 进一步减小
+  false_positive_penalty: -0.5  # 假阳性惩罚
+
+# PPO 训练配置
+ppo:
+  learning_rate: 0.0003
+  n_steps: 2048  # 每次更新收集的步数
+  batch_size: 64
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.05  # 熵正则 - 增加探索
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  
+# 训练配置
+training:
+  total_timesteps: 100000
+  save_freq: 10000
+  eval_freq: 5000
+  log_dir: "./logs"
+  save_dir: "./checkpoints"
+  
+# 数据配置
+data:
+  train_image_dir: "/home/ubuntu/Segment_DATA/orgin_pic"  # 220个原始造影图像
+  train_mask_dir: "/home/ubuntu/Segment_DATA/lab_pic"  # 对应的标注掩膜
+  val_image_dir: null
+  val_mask_dir: null
+  
+# 日志配置
+logging:
+  tensorboard: true
+  verbose: 1
+

@@ -1,0 +1,76 @@
+# SAM2 配置
+sam2:
+  checkpoint: "/home/ubuntu/sam2.1_hiera_large.pt"
+  model_cfg: "configs/sam2.1/sam2.1_hiera_l.yaml"
+  device: "cuda"
+  use_half_precision: true
+
+# 候选生成配置
+candidates:
+  num_initial_points: 3  # 减少初始点，避免选择太多区域
+  num_candidates_per_point: 3
+  mask_thresholds: [0.5, 0.7, 0.9]  # 提高阈值，选择更保守的掩膜
+  multimask_output: true
+  
+# RL 环境配置
+env:
+  max_steps: 12  # 稍微减少，避免过度探索
+  image_size: [512, 512]
+  observation_features: 128
+  
+# RL 动作空间
+actions:
+  select_candidate: true
+  sample_new_prompt: true
+  merge_current: true
+  terminate: true
+
+# 奖励函数配置 - 关键优化！
+reward:
+  # 有标注数据
+  use_gt: true
+  iou_weight: 5.0  # 大幅增加IoU权重
+  cldice_weight: 1.0  # 增加clDice权重
+  topology_weight: 0.2
+  
+  # 辅助奖励
+  vesselness_weight: 0.5
+  smoothness_weight: 0.1
+  
+  # 成本项 - 关键优化！
+  action_cost: -0.005  # 稍微增加动作成本，鼓励更少步骤
+  false_positive_penalty: -2.0  # 大幅增加假阳性惩罚（从-0.5到-2.0）
+
+# PPO 训练配置
+ppo:
+  learning_rate: 0.0003
+  n_steps: 2048
+  batch_size: 128  # 增加batch size
+  n_epochs: 10
+  gamma: 0.99
+  gae_lambda: 0.95
+  clip_range: 0.2
+  ent_coef: 0.02  # 减小熵系数，减少随机性
+  vf_coef: 0.5
+  max_grad_norm: 0.5
+  
+# 训练配置
+training:
+  total_timesteps: 100000
+  save_freq: 10000
+  eval_freq: 5000
+  log_dir: "./logs/improved"
+  save_dir: "./checkpoints/improved"
+  
+# 数据配置
+data:
+  train_image_dir: "/home/ubuntu/Segment_DATA/orgin_pic"
+  train_mask_dir: "/home/ubuntu/Segment_DATA/lab_pic"
+  val_image_dir: null
+  val_mask_dir: null
+  
+# 日志配置
+logging:
+  tensorboard: true
+  verbose: 1
+
